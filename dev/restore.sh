@@ -35,7 +35,7 @@ cp ./code-server/platform-shim.js $VSC_DIR
 cp ./code-server/User/settings.json $VSC_DIR/User
 cp -r ./code-server/extensions $VSC_DIR 
 
-echo "Copying the android analytics.settings and default debug.keystore..."
+echo "Restoring the android analytics.settings and *.keystore (debug|release)."
 cp -r ./.android/* $HOME/.android 2>/dev/null || true 
 
 echo "DONE. Restoration successful."

@@ -41,7 +41,7 @@ cp $HOME/.config/code-server/platform-shim.js ./code-server 2>/dev/null || true
 cp $VSC_DIR/platform-shim.js ./code-server 2>/dev/null || true 
 
 # shallow copy only
-echo "Copying the android analytics.settings and default debug.keystore..."
+echo "Copying the android analytics.settings and *.keystore (debug|release)."
 cp $HOME/.android/* ./.android 2>/dev/null || true 
 
 # touch "$TERMUX_PREFIX/etc/vscodetermux-dev-backup"

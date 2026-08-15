@@ -40,6 +40,8 @@ class WebViewFragment : Fragment() {
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         if (!::webView.isInitialized) {
             webView = WebView(requireContext())
+
+            webView.setBackgroundColor(android.graphics.Color.BLACK)
             webView.settings.apply {
                 javaScriptEnabled = true
                 domStorageEnabled = true

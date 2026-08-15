@@ -156,13 +156,8 @@ class MainActivity : AppCompatActivity(), TerminalSessionClient by StubTerminalS
             }
         }
         findViewById<Button>(R.id.clearLogButton).setOnClickListener {
-            // Send the real clear-screen escape sequence via session input
-            // — same as if the user typed `clear` and pressed enter.
-            // emulator.reset() (tried previously) does a full VT100 state
-            // reset, not the same operation, and may not have visually
-            // cleared anything.
-            attachedSession?.write("\u001b[H\u001b[2J")
-            terminalView.onScreenUpdated()
+            // Actually run `clear` in the shell
+            attachedSession?.write("clear\r")
             preSessionStatus.text = ""
         }
         val portInput = findViewById<android.widget.EditText>(R.id.portInput)

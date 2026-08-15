@@ -1,5 +1,8 @@
 package com.example.vscodetermux
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.OnBackPressedCallback
@@ -17,6 +20,14 @@ class WebViewActivity : AppCompatActivity() {
             startActivity(Intent(this, MainActivity::class.java))
             finish()
             return
+        }
+
+        if (intent?.action == Intent.ACTION_SEND && intent.type == "text/plain") {
+            intent.getStringExtra(Intent.EXTRA_TEXT)?.let { text ->
+                // a normal paste inside the editor to pick it up.
+                val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                clipboard.setPrimaryClip(ClipData.newPlainText("shared", text))
+            }
         }
 
         

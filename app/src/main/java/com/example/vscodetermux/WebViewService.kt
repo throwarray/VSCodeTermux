@@ -78,6 +78,7 @@ class WebViewService : Service() {
         webViewContainer = FrameLayout(this)
 
         webView = WebView(this).apply {
+            setBackgroundColor(android.graphics.Color.BLACK)
             settings.apply {
                 javaScriptEnabled = true
                 domStorageEnabled = true
