@@ -1,0 +1,173 @@
+import java.io.File
+import java.security.KeyStore
+import java.util.Base64
+import org.gradle.api.GradleException
+
+plugins {
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
+}
+
+android {
+    namespace = "com.example.vscodetermux"
+    compileSdk = 34
+
+    defaultConfig {
+        // NOTE: the proot isn't tied to Termux's own prefix. 
+        // There's no id constraint. Unless play-distributed, there's no need for minSdk 28.
+        applicationId = "com.example.vscodetermux"
+        minSdk = 26 
+
+        // Android 10+ (29+) enforces W^X (write-xor-execute) — 
+        // it refuses to exec() any file the app wrote to its own storage and chmod +x'd. 
+        // Termux dodges this by shipping its binaries as APK-bundled jniLibs instead 
+        // (installer-extracted, not app-written).
+
+        // 28 is the simplest way to keep runtime download+exec
+        // IDEA: Raise the SDK only if using the jniLibs packaging approach instead.
+        targetSdk = 28
+        versionCode = 1
+        versionName = "0.1.0"
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+
+    // Fire Stick target: armeabi-v7a. The bundled proot binary is a static
+    // 32-bit ARM build that also runs fine on 64-bit ARM devices via the
+    // standard compat layer, so a single ABI covers both.
+    ndkVersion = "26.1.10909125"
+    defaultConfig {
+        ndk {
+            abiFilters += listOf("armeabi-v7a")
+        }
+    }
+
+    buildFeatures {
+        viewBinding = true
+    }
+
+    lint {
+        // Google Play's "must target a recent API level" policy check —
+        // doesn't apply here, this is sideloaded, never Play-distributed.
+        // targetSdk is pinned to 28 on purpose (see the comment above):
+        // raising it trips Android 10+'s W^X enforcement, which would break
+        // runtime-downloaded-and-exec'd binaries (proot, toolchain, etc.)
+        // unless the jniLibs packaging approach is adopted instead. Without
+        // this, that policy check fails release builds outright (severity:
+        // Fatal), since AGP runs lint as part of assembleRelease.
+        disable += "ExpiredTargetSdkVersion"
+    }
+}
+
+dependencies {
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.appcompat)
+    implementation(libs.material)
+    implementation(libs.androidx.webkit)
+    implementation(libs.androidx.lifecycle.service)
+
+    implementation(libs.termux.terminal.emulator)
+    implementation(libs.termux.terminal.view)
+
+    implementation(libs.commons.compress)
+    implementation(libs.xz)
+    implementation(libs.zstd.jni)
+}
+
+// Generates the fixed self-signed cert code-server serves and the WebView
+// trusts (see network_security_config.xml + start-code-server.sh). Uses
+// keytool — it ships with every JDK, and this project already requires
+// one (compileOptions above) — rather than shelling out to openssl, which
+// would be a whole separate system package to install just for this.
+//
+// Idempotent: only generates once. If assets/tls/ and res/raw/ already
+// have the cert (e.g. checked into version control), this is a no-op —
+// which matters, since the cert served by code-server and the one trusted
+// by the WebView have to be byte-identical, not just regenerated-and-hope.
+val generateCodeServerCert = tasks.register("generateCodeServerCert") {
+    description = "Generates code-server's self-signed cert via keytool " +
+        "(no openssl dependency needed)."
+
+    val assetsTlsDir = file("src/main/assets/tls")
+    val rawDir = file("src/main/res/raw")
+    val certPem = File(assetsTlsDir, "cert.pem")
+    val keyPem = File(assetsTlsDir, "key.pem")
+    val rawCertPem = File(rawDir, "code_server_cert.pem")
+
+    outputs.files(certPem, keyPem, rawCertPem)
+
+    doLast {
+        if (certPem.exists() && keyPem.exists() && rawCertPem.exists()) {
+            return@doLast
+        }
+
+        assetsTlsDir.mkdirs()
+        rawDir.mkdirs()
+
+        val keystoreFile = File(temporaryDir, "codeserver.p12")
+        val storePass = "codeserver" // local-only keystore, deleted right after
+        val alias = "codeserver"
+        val keytool = File(System.getProperty("java.home"), "bin/keytool").absolutePath
+
+        // Plain ProcessBuilder rather than Gradle's exec{}/ExecOperations —
+        // exec{} isn't resolvable from inside a task's doLast on newer
+        // Gradle (it's being phased out there for config-cache reasons),
+        // and ProcessBuilder needs no Gradle API at all, so it's not
+        // exposed to that churn.
+        val process = ProcessBuilder(
+            keytool, "-genkeypair",
+            "-alias", alias,
+            "-keyalg", "RSA", "-keysize", "2048",
+            "-validity", "3650",
+            "-dname", "CN=vscodetermux-local",
+            "-ext", "SAN=ip:127.0.0.1,dns:localhost",
+            "-storetype", "PKCS12",
+            "-keystore", keystoreFile.absolutePath,
+            "-storepass", storePass,
+            "-keypass", storePass
+        ).redirectErrorStream(true).start()
+
+        val output = process.inputStream.bufferedReader().readText()
+        val exitCode = process.waitFor()
+        if (exitCode != 0) {
+            throw GradleException("keytool failed (exit $exitCode):\n$output")
+        }
+
+        val keyStore = KeyStore.getInstance("PKCS12")
+        keystoreFile.inputStream().use { keyStore.load(it, storePass.toCharArray()) }
+
+        val cert = keyStore.getCertificate(alias)
+        val key = keyStore.getKey(alias, storePass.toCharArray())
+
+        fun pem(label: String, der: ByteArray): String {
+            val body = Base64.getMimeEncoder(64, "\n".toByteArray()).encodeToString(der)
+            return "-----BEGIN $label-----\n$body\n-----END $label-----\n"
+        }
+
+        // key.getEncoded() on a KeyStore-issued RSA PrivateKey is PKCS#8 DER —
+        // exactly what an unencrypted "PRIVATE KEY" PEM block expects, and
+        // what code-server/Node's https server reads directly.
+        certPem.writeText(pem("CERTIFICATE", cert.encoded))
+        keyPem.writeText(pem("PRIVATE KEY", key.encoded))
+        rawCertPem.writeText(certPem.readText())
+
+        keystoreFile.delete()
+    }
+}
+
+tasks.named("preBuild") {
+    dependsOn(generateCodeServerCert)
+}

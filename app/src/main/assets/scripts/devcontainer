@@ -1,0 +1,58 @@
+#!/bin/sh
+set -e
+usage() {
+  echo "usage: devcontainer up|exec [command...]"
+  echo "reads ./.devcontainer/devcontainer.json in the current directory"
+  exit 1
+}
+[ $# -ge 1 ] || usage
+ACTION="$1"; shift
+
+SPEC=.devcontainer/devcontainer.json
+[ -f "$SPEC" ] || { echo "no $SPEC in $(pwd)"; exit 1; }
+
+IMAGE=$(node -e "const s=require('fs').readFileSync('$SPEC','utf8');console.log(JSON.parse(s).image||'')")
+POST=$(node -e "const s=require('fs').readFileSync('$SPEC','utf8');console.log(JSON.parse(s).postCreateCommand||'')")
+
+case "$IMAGE" in
+  *ubuntu*) DISTRO=ubuntu ;;
+  *debian*) DISTRO=debian ;;
+  *alpine*) DISTRO=alpine ;;
+  *fedora*) DISTRO=fedora ;;
+  *) DISTRO=ubuntu ;;
+esac
+
+WORKSPACE=$(pwd)
+HOST_ENV_SCRIPT=/root/.vscodetermux-host-toolchain.sh
+
+BINDS="--bind $WORKSPACE:/workspace --bind $PREFIX:/host/termux-usr --bind $PREFIX/opt:/host/opt"
+for p in /vendor /linkerconfig; do
+  [ -e "$p" ] && BINDS="$BINDS --bind $p:$p"
+done
+
+write_host_env() {
+  proot-distro login "$DISTRO" $BINDS -- sh -c "cat > $HOST_ENV_SCRIPT" <<'ENVEOF'
+export JAVA_HOME=/host/termux-usr/lib/jvm/java-17-openjdk
+export ANDROID_HOME=/host/opt/android-sdk
+export ANDROID_SDK_ROOT=/host/opt/android-sdk
+export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$JAVA_HOME/bin:/host/termux-usr/bin:$PATH
+mkdir -p "$HOME/.gradle"
+grep -q aapt2FromMavenOverride "$HOME/.gradle/gradle.properties" 2>/dev/null || echo "android.aapt2FromMavenOverride=/host/termux-usr/bin/aapt2" >> "$HOME/.gradle/gradle.properties"
+ENVEOF
+}
+
+case "$ACTION" in
+  up)
+    proot-distro list --installed 2>/dev/null | grep -qx "$DISTRO" || proot-distro install "$DISTRO"
+    write_host_env
+    if [ -n "$POST" ]; then
+      proot-distro login "$DISTRO" $BINDS --work-dir /workspace -- sh -c ". $HOST_ENV_SCRIPT && $POST"
+    fi
+    echo "devcontainer '$DISTRO' ready — host JDK/Gradle/Maven/Android SDK/aapt2 are shared in (no reinstall). devcontainer exec <cmd> to run inside it"
+    ;;
+  exec)
+    [ $# -ge 1 ] || usage
+    proot-distro login "$DISTRO" $BINDS --work-dir /workspace -- sh -c ". $HOST_ENV_SCRIPT && exec \"\$@\"" -- "$@"
+    ;;
+  *) usage ;;
+esac

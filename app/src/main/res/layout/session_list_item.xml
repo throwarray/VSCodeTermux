@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/sessionTitle"
+    android:layout_width="match_parent"
+    android:layout_height="?android:attr/listPreferredItemHeight"
+    android:background="?android:attr/activatedBackgroundIndicator"
+    android:ellipsize="marquee"
+    android:gravity="start|center_vertical"
+    android:padding="12dp"
+    android:textColor="#e0e0e0"
+    android:textSize="14sp" />

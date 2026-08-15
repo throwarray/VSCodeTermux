@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <Button
+        android:id="@+id/grantPermissionsButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="12dp"
+        android:background="#c77800"
+        android:textColor="#ffffff"
+        android:text="@string/grant_permissions" />
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginBottom="12dp">
+
+        <!-- Real, interactive terminal session for setup/toolchain-install/
+             code-server — replaces the old one-way log-only HUD. Any
+             interactive prompt during setup (dpkg conffile prompts, etc.)
+             can actually be answered here now, and this session shows up
+             in TerminalActivity's own session drawer too. -->
+        <com.termux.view.TerminalView
+            android:id="@+id/terminalView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#000000"
+            android:focusable="true"
+            android:focusableInTouchMode="true" />
+
+        <!-- Only visible during the brief pre-bootstrap phase (fetching
+             proot, extracting the Termux bootstrap) — there's genuinely no
+             PTY to attach yet at that point. Hidden as soon as the real
+             setup terminal session exists. -->
+        <ScrollView
+            android:id="@+id/preSessionStatusScroll"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#000000">
+
+            <TextView
+                android:id="@+id/preSessionStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="#e0e0e0"
+                android:fontFamily="monospace"
+                android:textSize="12sp"
+                android:padding="8dp"
+                android:text="@string/status_idle" />
+
+        </ScrollView>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top|end"
+            android:orientation="vertical"
+            android:layout_margin="4dp">
+
+            <Button
+                android:id="@+id/copyLogButton"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+                android:padding="0dp"
+                android:text="@string/copy_log_icon"
+                android:textSize="16sp"
+                android:contentDescription="@string/copy_log" />
+
+            <Button
+                android:id="@+id/clearLogButton"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginTop="4dp"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+                android:padding="0dp"
+                android:text="@string/clear_log_icon"
+                android:textSize="16sp"
+                android:contentDescription="@string/clear_log" />
+
+            <Button
+                android:id="@+id/restartServerButton"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginTop="4dp"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+                android:padding="0dp"
+                android:text="@string/restart_server_icon"
+                android:textSize="16sp"
+                android:contentDescription="@string/restart_server" />
+
+        </LinearLayout>
+
+    </FrameLayout>
+
+    <ProgressBar
+        android:id="@+id/progressBar"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:indeterminate="true"
+        android:visibility="gone"
+        android:layout_marginBottom="12dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/openTerminalButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginEnd="6dp"
+            android:text="@string/open_terminal_icon"
+            android:textSize="18sp"
+            android:contentDescription="@string/open_terminal" />
+
+        <Button
+            android:id="@+id/openIdeButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="6dp"
+            android:text="@string/open_ide_icon"
+            android:textSize="18sp"
+            android:enabled="false"
+            android:contentDescription="@string/open_ide" />
+
+    </LinearLayout>
+
+    <Button
+        android:id="@+id/installDevtoolsButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="@string/install_devtools" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="12dp"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/port_label"
+            android:layout_marginEnd="8dp" />
+
+        <EditText
+            android:id="@+id/portInput"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:inputType="number"
+            android:maxLength="5"
+            android:hint="8080" />
+
+        <Button
+            android:id="@+id/setPortButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="@string/set_port" />
+
+    </LinearLayout>
+
+    <Button
+        android:id="@+id/complianceButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/compliance"
+        android:layout_marginTop="12dp"
+        android:textSize="12sp" />
+
+    <Button
+        android:id="@+id/serverInfoButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/server_info"
+        android:layout_marginTop="12dp"
+        android:textSize="12sp" />
+
+</LinearLayout>

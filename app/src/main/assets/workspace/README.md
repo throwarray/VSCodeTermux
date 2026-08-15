@@ -1,0 +1,1 @@
+The default vscode workspace for project files.

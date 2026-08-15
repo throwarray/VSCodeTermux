@@ -1,0 +1,11 @@
+.gradle/*
+**/.gradle/*
+
+build/*
+**/build/*
+
+dev/backup/*
+**/*.pem
+
+app/src/main/assets/examples/*
+!**/.gitkeep

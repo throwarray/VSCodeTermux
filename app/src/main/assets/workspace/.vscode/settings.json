@@ -1,0 +1,4 @@
+{
+    "java.jdt.ls.vmargs": "-Xmx512m -XX:+UseSerialGC",
+    "java.import.gradle.java.home": "/usr/lib/jvm/java-17-openjdk"
+}

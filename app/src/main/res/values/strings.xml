@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">VSCodeTermux</string>
+    <string name="status_idle">Grant permissions to begin setup.</string>
+    <string name="grant_permissions">Grant storage permission</string>
+    <string name="open_ide">Open VS Code</string>
+    <string name="open_ide_icon">&#60;/&#62;</string>
+    <string name="open_terminal">Open Terminal</string>
+    <string name="open_terminal_icon">&#62;_</string>
+    <string name="copy_log">Copy log</string>
+    <string name="copy_log_icon">&#10697;</string>
+    <string name="clear_log">Clear log</string>
+    <string name="clear_log_icon">&#10007;</string>
+    <string name="restart_server">Restart code-server</string>
+    <string name="restart_server_icon">&#8635;</string>
+    <string name="port_label">Port:</string>
+    <string name="set_port">Set</string>
+    <string name="compliance">Licenses &amp; Compliance</string>
+    <string name="server_info">Server Info (URL / password for other devices)</string>
+    <string name="install_devtools">Install Android Dev Tools (JDK/SDK/NDK)</string>
+    <string name="install_devtools_waiting">Waiting for base setup to finish…</string>
+    <string name="new_session">New session</string>
+    <string name="rename_session">Rename session</string>
+    <string name="kill_session">Kill session</string>
+    <string name="close_session">Close session</string>
+    <string name="reset_terminal">Reset terminal</string>
+    <string name="confirm_kill_process">Kill this session?</string>
+</resources>

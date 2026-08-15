@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Original simple glyph: a ">_" terminal prompt, centered in the
+     108dp adaptive-icon safe zone (inner ~66dp is what's reliably visible
+     across launcher mask shapes). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- ">" chevron -->
+    <path
+        android:fillColor="#00E676"
+        android:pathData="M38,40 L54,54 L38,68 L38,60 L46,54 L38,48 Z" />
+    <!-- "_" cursor bar -->
+    <path
+        android:fillColor="#00E676"
+        android:pathData="M58,64 L72,64 L72,70 L58,70 Z" />
+</vector>

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Scoped narrowly rather than a blanket usesCleartextTraffic="true" -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">localhost</domain>
+
+        <!--
+          code-server's own cert (see assets/tls/, staged by
+          start-code-server.sh into $HOME/.local/share/code-server/tls/).
+          Trusting it here — at the network-stack level, not a per-request
+          SSL-error callback — means it applies uniformly to every request
+          the WebView makes on these hosts, including WebSocket upgrades
+          (terminal, extension host), not just page loads.
+        -->
+        <trust-anchors>
+            <certificates src="@raw/code_server_cert" />
+        </trust-anchors>
+    </domain-config>
+</network-security-config>

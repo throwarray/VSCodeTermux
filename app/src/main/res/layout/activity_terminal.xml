@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.drawerlayout.widget.DrawerLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/drawerLayout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <com.termux.view.TerminalView
+        android:id="@+id/terminalView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#000000"
+        android:focusable="true"
+        android:focusableInTouchMode="true" />
+
+    <!-- Session drawer, slides in from the left (edge-swipe or DPAD-right) -->
+    <LinearLayout
+        android:id="@+id/leftDrawer"
+        android:layout_width="260dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="start"
+        android:orientation="vertical"
+        android:background="#0d0d0d"
+        android:descendantFocusability="blocksDescendants">
+
+        <ListView
+            android:id="@+id/sessionListView"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:choiceMode="singleChoice"
+            android:longClickable="true"
+            android:divider="#1a1a1a"
+            android:dividerHeight="1dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/newSessionButton"
+            style="?android:attr/buttonBarButtonStyle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/new_session" />
+
+    </LinearLayout>
+
+</androidx.drawerlayout.widget.DrawerLayout>
