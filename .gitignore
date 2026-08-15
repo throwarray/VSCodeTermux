@@ -9,3 +9,5 @@ dev/backup/*
 
 app/src/main/assets/examples/*
 !**/.gitkeep
+
+**/build.log
