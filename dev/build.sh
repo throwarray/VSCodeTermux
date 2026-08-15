@@ -19,7 +19,7 @@ LOG_FILE="$DIR/build.log"
 # Redirected (not piped through tee) so the exit code below is gradle's own,
 # not tee's — `cmd | tee file; $?` would give tee's status under plain sh,
 # since PIPESTATUS is a bashism this script can't rely on here.
-gradle "assemble${BUILD_TYPE_TITLECASE}" --no-daemon --offline --stacktrace \
+gradle "assemble${BUILD_TYPE_TITLECASE}" --no-daemon --stacktrace \
   > "$LOG_FILE" 2>&1
 GRADLE_EXIT=$?
 
