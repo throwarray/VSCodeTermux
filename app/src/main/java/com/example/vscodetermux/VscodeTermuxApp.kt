@@ -30,21 +30,21 @@ class VscodeTermuxApp : Application() {
     fun codeServerUrl(): String = "https://127.0.0.1:${codeServerPort()}/"
 
     /**
-     * URL to open code-server directly to the files at [guestPaths]
-     * (absolute paths as seen from inside the guest — see
-     * importSharedFile) as tabs, instead of the default workspace view —
-     * VS Code Web's own documented `payload` query parameter (openFile),
-     * evaluated once at initial page load. Paired with `folder=` pointing
-     * at the first file's containing directory, mirroring code-server's
-     * own documented example exactly (FAQ: "How do I open a file...")
-     * rather than assuming payload alone is sufficient.
+     * URL to open code-server with the files at [guestPaths] (absolute
+     * paths as seen from inside the guest — see importSharedFile) as
+     * extra tabs — VS Code Web's own documented `payload` query parameter
+     * (openFile), evaluated once at initial page load. When
+     * [includeContainingFolder] is set, also passes `folder=` pointing at
+     * the first file's directory as the workspace — code-server's own
+     * reference example pairs payload with folder=dirname(file)
      */
-    fun codeServerOpenFileUrl(guestPaths: List<String>): String {
+    fun codeServerOpenFileUrl(guestPaths: List<String>, includeContainingFolder: Boolean): String {
         val host = "127.0.0.1:${codeServerPort()}"
         val entries = guestPaths.joinToString(",") { path ->
             """["openFile","vscode-remote://$host$path"]"""
         }
         val payload = java.net.URLEncoder.encode("[$entries]", "UTF-8")
+        if (!includeContainingFolder) return "${codeServerUrl()}?payload=$payload"
         val folder = java.net.URLEncoder.encode(guestPaths.first().substringBeforeLast('/'), "UTF-8")
         return "${codeServerUrl()}?folder=$folder&payload=$payload"
     }

@@ -86,6 +86,24 @@
                 <data android:scheme="file" android:mimeType="application/x-sh" />
             </intent-filter>
         </activity>
+        <!--
+          Same Activity, second share-sheet entry: opens a file
+          with its containing folder as the workspace;
+          about as close as this gets to "share a folder",
+          since Android's no folder-sharing concept.
+        -->
+        <activity-alias
+            android:name=".OpenFolderShareTarget"
+            android:targetActivity=".WebViewActivity"
+            android:exported="true"
+            android:label="@string/share_open_folder">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+        </activity-alias>
 
         <activity
             android:name=".TerminalActivity"

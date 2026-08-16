@@ -72,15 +72,18 @@ class WebViewActivity : AppCompatActivity() {
      */
     private fun importAndOpen(uris: List<Uri>) {
         val resolver = contentResolver
+        // The two share-sheet entries are the same Activity via
+        // activity-alias (see manifest) — intent.component carries which one was tapped
+        val openAsFolder = intent.component?.className?.endsWith(".OpenFolderShareTarget") == true
         Thread {
             val imported = uris.mapNotNull { VscodeTermuxApp.instance.importSharedFile(it, resolver) }
             runOnUiThread {
                 val url = imported.takeIf { it.isNotEmpty() }
-                    ?.let { VscodeTermuxApp.instance.codeServerOpenFileUrl(it) }
+                    ?.let { VscodeTermuxApp.instance.codeServerOpenFileUrl(it, openAsFolder) }
                 setupWebViewFragment(url)
             }
         }.start()
-        }
+    }
 
     /** contentResolver access needs the Activity, so this stays here rather
      *  than in VscodeTermuxApp — the actual copy logic does live there. */
@@ -98,7 +101,7 @@ class WebViewActivity : AppCompatActivity() {
             .replace(R.id.webViewContainer, fragment, fragmentTag)
             .commit()
         supportFragmentManager.executePendingTransactions()
-        
+
         // Hide the spinner if already loaded.
         // (onPageFinished won't fire again for an already-loaded page).
         if (fragment.isWebViewReady) {
