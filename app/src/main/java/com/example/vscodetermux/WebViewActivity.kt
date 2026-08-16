@@ -4,6 +4,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
@@ -22,11 +23,28 @@ class WebViewActivity : AppCompatActivity() {
             return
         }
 
-        if (intent?.action == Intent.ACTION_SEND && intent.type == "text/plain") {
-            intent.getStringExtra(Intent.EXTRA_TEXT)?.let { text ->
-                // a normal paste inside the editor to pick it up.
-                val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                clipboard.setPrimaryClip(ClipData.newPlainText("shared", text))
+        // WIP
+        when (intent?.action) {
+            Intent.ACTION_SEND -> {
+                if (intent.type == "text/plain" && intent.hasExtra(Intent.EXTRA_TEXT)) {
+                    intent.getStringExtra(Intent.EXTRA_TEXT)?.let { text ->
+                        // WebViewFragment's ClipboardBridge already routes
+                        // code-server's navigator.clipboard.readText() through
+
+                        // needs a normal paste inside the editor to pick it up.
+                        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        clipboard.setPrimaryClip(ClipData.newPlainText("shared", text))
+                    }
+                } else {
+                    intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)?.let { uri ->
+                        importSharedUris(listOf(uri))
+                    }
+                }
+            }
+            Intent.ACTION_SEND_MULTIPLE -> {
+                intent.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM)?.let { uris ->
+                    importSharedUris(uris)
+                }
             }
         }
 
@@ -59,5 +77,14 @@ class WebViewActivity : AppCompatActivity() {
                 }
             }
         })
+    }
+
+    /** contentResolver access needs the Activity, so this stays here rather
+     *  than in VscodeTermuxApp — the actual copy logic does live there. */
+    private fun importSharedUris(uris: List<Uri>) {
+        val resolver = contentResolver
+        Thread {
+            uris.forEach { VscodeTermuxApp.instance.importSharedFile(it, resolver) }
+        }.start()
     }
 }

@@ -285,4 +285,25 @@ rm -rf "$ANDROID_HOME/tmp" 2>/dev/null || true
 pkg clean || true
 pkg autoclean
 
+step 11 "Generating the release signing keystore"
+
+RELEASE_KEYSTORE="$HOME/.android/vscodetermux-release.keystore"
+
+if [ ! -f "$RELEASE_KEYSTORE" ]; then
+  mkdir -p "$HOME/.android"
+  # Same non-interactive pattern as app/build.gradle.kts. 
+  # the same well-known password as ~/.android/debug.keystore ("android").
+  "$JAVA_HOME/bin/keytool" -genkeypair -v -storetype PKCS12 \
+    -keystore "$RELEASE_KEYSTORE" \
+    -alias vscodetermux \
+    -keyalg RSA -keysize 2048 -validity 10000 \
+    -dname "CN=VSCodeTermux, OU=Self-hosted build, O=VSCodeTermux" \
+    -storepass android -keypass android \
+    > /dev/null 2>&1 \
+    && log_ok "Release keystore generated at $RELEASE_KEYSTORE" \
+    || log_warn "Release keystore generation failed — release builds will be unsigned"
+else
+  log_debug "Release keystore already exists — leaving it alone"
+fi
+
 log_ok "Android dev tools install complete"

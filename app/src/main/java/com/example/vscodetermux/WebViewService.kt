@@ -78,6 +78,7 @@ class WebViewService : Service() {
         webViewContainer = FrameLayout(this)
 
         webView = WebView(this).apply {
+            // fix flash of white content.
             setBackgroundColor(android.graphics.Color.BLACK)
             settings.apply {
                 javaScriptEnabled = true

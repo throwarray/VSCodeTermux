@@ -56,6 +56,114 @@ class VscodeTermuxApp : Application() {
         ).edit().putInt("code_server_port", port).apply()
     }
 
+    /** WIP Copies (or, when possible, symlinks — see below) a file shared from
+     *  another app (Share → VSCodeTermux). Deliberately kept out of
+     *  $HOME/workspace — that's meant to stay exactly what's actually in
+     *  the project, not accumulate incidental shared files — so this
+     *  won't show up in code-server's file explorer automatically; open
+     *  it via VS Code's own Ctrl+O / file picker instead. Call off the
+     *  main thread — this does blocking I/O. */
+    fun importSharedFile(uri: android.net.Uri, resolver: android.content.ContentResolver): File? {
+        val sharedDir = File(homeDir, ".local/share/vscodetermux/shared").apply { mkdirs() }
+        val name = resolveDisplayName(uri, resolver)
+            ?: uri.lastPathSegment
+            ?: "shared-${System.currentTimeMillis()}"
+        val dest = uniqueFile(sharedDir, name)
+
+        // Best-effort: if this URI is actually backed by shared storage (a
+        // real file manager sharing something from /storage/emulated/0, or
+        // a MediaStore item), symlink to it instead of copying —
+        // sharedStorageDir is already bind-mounted into the guest as
+        // /sdcard (see RootfsManager), so this doesn't duplicate any
+        // bytes, and editing it in VS Code edits the original file
+        // directly. Most third-party apps' own private content genuinely
+        // has no real path to point at (that's the actual point of scoped
+        // storage isolating one app's files from another) — those fall
+        // through to a real copy below instead.
+        resolveSharedStoragePath(uri, resolver)?.let { relativePath ->
+            val realFile = File(sharedStorageDir, relativePath)
+            if (realFile.exists()) {
+                return try {
+                    java.nio.file.Files.createSymbolicLink(
+                        dest.toPath(), File("/sdcard/$relativePath").toPath()
+                    )
+                    dest
+                } catch (e: java.io.IOException) {
+                    android.util.Log.w("VSCodeTermux", "symlink failed for $uri, falling back to copy: ${e.message}")
+                    copySharedFile(uri, resolver, dest)
+                }
+            }
+        }
+
+        return copySharedFile(uri, resolver, dest)
+    }
+
+    private fun copySharedFile(uri: android.net.Uri, resolver: android.content.ContentResolver, dest: File): File? {
+        return try {
+            resolver.openInputStream(uri)?.use { input ->
+                dest.outputStream().use { output -> input.copyTo(output) }
+            }
+            dest
+        } catch (e: java.io.IOException) {
+            android.util.Log.w("VSCodeTermux", "importSharedFile failed for $uri: ${e.message}")
+            null
+        }
+    }
+
+    /** Path relative to sharedStorageDir (what to append to /sdcard inside
+     *  the guest) if [uri] is actually backed by shared storage — null for
+     *  anything else (private app content with no real path, other
+     *  storage volumes this app doesn't bind-mount, etc). Covers the two
+     *  common cases (a real file manager's DocumentsProvider URI, and
+     *  MediaStore's deprecated-but-often-still-populated DATA column) —
+     *  not exhaustive, since there's no general API for this by design. */
+    private fun resolveSharedStoragePath(uri: android.net.Uri, resolver: android.content.ContentResolver): String? {
+        if (uri.authority == "com.android.externalstorage.documents") {
+            val docId = try {
+                android.provider.DocumentsContract.getDocumentId(uri)
+            } catch (e: IllegalArgumentException) {
+                return null
+            }
+            val parts = docId.split(":", limit = 2)
+            return if (parts.size == 2 && parts[0].equals("primary", ignoreCase = true)) parts[1] else null
+        }
+
+        return try {
+            resolver.query(uri, arrayOf(android.provider.MediaStore.MediaColumns.DATA), null, null, null)
+                ?.use { cursor ->
+                    val idx = cursor.getColumnIndex(android.provider.MediaStore.MediaColumns.DATA)
+                    if (idx < 0 || !cursor.moveToFirst()) return@use null
+                    cursor.getString(idx)?.removePrefix("${sharedStorageDir.absolutePath}/")
+                }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private fun resolveDisplayName(uri: android.net.Uri, resolver: android.content.ContentResolver): String? {
+        if (uri.scheme != "content") return null
+        return resolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)
+            ?.use { cursor ->
+                val idx = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                if (idx >= 0 && cursor.moveToFirst()) cursor.getString(idx) else null
+            }
+    }
+
+    /** Avoids clobbering an existing file that happens to share the same name. */
+    private fun uniqueFile(dir: File, name: String): File {
+        if (!File(dir, name).exists()) return File(dir, name)
+        val dot = name.lastIndexOf('.')
+        val base = if (dot > 0) name.substring(0, dot) else name
+        val ext = if (dot > 0) name.substring(dot) else ""
+        var n = 1
+        var candidate = File(dir, "$base-$n$ext")
+        while (candidate.exists()) {
+            n++
+            candidate = File(dir, "$base-$n$ext")
+        }
+        return candidate
+    }
+
     companion object {
         const val CODE_SERVER_PORT = 3033
         lateinit var instance: VscodeTermuxApp

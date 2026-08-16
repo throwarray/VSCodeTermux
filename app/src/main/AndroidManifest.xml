@@ -54,10 +54,15 @@
             android:exported="true"
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:windowSoftInputMode="adjustResize">
+            <!--
+             Android treats each matching intent-filter as a share entry. 
+             Branching on intent.type/action in code instead.
+            -->
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
                 <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="text/plain" />
+                <data android:mimeType="*/*" />
             </intent-filter>
         </activity>
 

@@ -156,8 +156,15 @@ class MainActivity : AppCompatActivity(), TerminalSessionClient by StubTerminalS
             }
         }
         findViewById<Button>(R.id.clearLogButton).setOnClickListener {
-            // Actually run `clear` in the shell
-            attachedSession?.write("clear\r")
+            // `clear` command
+            // whatever's typed gets swallowed by code-server's own stdin handling, 
+            // since this bypasses TerminalSession's read loop, the usual
+            // onTextChanged callback never fires on its own — that's what
+            // the manual onScreenUpdated() below is for.
+            
+            val bytes = "\u001b[H\u001b[2J".toByteArray()
+            terminalView.mEmulator?.append(bytes, bytes.size)
+            terminalView.onScreenUpdated()
             preSessionStatus.text = ""
         }
         val portInput = findViewById<android.widget.EditText>(R.id.portInput)
