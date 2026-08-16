@@ -64,6 +64,27 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="*/*" />
             </intent-filter>
+
+            <!--
+              "Open with" support: text/* and a handful of common formats
+              that get a non-text/* mimeType even though they're plain text.
+            -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="content" android:mimeType="text/*" />
+                <data android:scheme="file" android:mimeType="text/*" />
+                <data android:scheme="content" android:mimeType="application/json" />
+                <data android:scheme="file" android:mimeType="application/json" />
+                <data android:scheme="content" android:mimeType="application/xml" />
+                <data android:scheme="file" android:mimeType="application/xml" />
+                <data android:scheme="content" android:mimeType="application/javascript" />
+                <data android:scheme="file" android:mimeType="application/javascript" />
+                <data android:scheme="content" android:mimeType="application/x-yaml" />
+                <data android:scheme="file" android:mimeType="application/x-yaml" />
+                <data android:scheme="content" android:mimeType="application/x-sh" />
+                <data android:scheme="file" android:mimeType="application/x-sh" />
+            </intent-filter>
         </activity>
 
         <activity

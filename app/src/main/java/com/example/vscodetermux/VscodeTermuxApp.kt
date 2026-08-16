@@ -29,6 +29,26 @@ class VscodeTermuxApp : Application() {
      *  WebView trusts it natively, no runtime SSL bypass needed. */
     fun codeServerUrl(): String = "https://127.0.0.1:${codeServerPort()}/"
 
+    /**
+     * URL to open code-server directly to the files at [guestPaths]
+     * (absolute paths as seen from inside the guest — see
+     * importSharedFile) as tabs, instead of the default workspace view —
+     * VS Code Web's own documented `payload` query parameter (openFile),
+     * evaluated once at initial page load. Paired with `folder=` pointing
+     * at the first file's containing directory, mirroring code-server's
+     * own documented example exactly (FAQ: "How do I open a file...")
+     * rather than assuming payload alone is sufficient.
+     */
+    fun codeServerOpenFileUrl(guestPaths: List<String>): String {
+        val host = "127.0.0.1:${codeServerPort()}"
+        val entries = guestPaths.joinToString(",") { path ->
+            """["openFile","vscode-remote://$host$path"]"""
+        }
+        val payload = java.net.URLEncoder.encode("[$entries]", "UTF-8")
+        val folder = java.net.URLEncoder.encode(guestPaths.first().substringBeforeLast('/'), "UTF-8")
+        return "${codeServerUrl()}?folder=$folder&payload=$payload"
+    }
+
     /** Reads the password code-server was configured with (see
      *  start-code-server.sh), for auto-filling the WebView's login prompt.
      *  Returns null before code-server has written its config.yaml yet. */
@@ -56,46 +76,34 @@ class VscodeTermuxApp : Application() {
         ).edit().putInt("code_server_port", port).apply()
     }
 
-    /** WIP Copies (or, when possible, symlinks — see below) a file shared from
-     *  another app (Share → VSCodeTermux). Deliberately kept out of
-     *  $HOME/workspace — that's meant to stay exactly what's actually in
-     *  the project, not accumulate incidental shared files — so this
-     *  won't show up in code-server's file explorer automatically; open
-     *  it via VS Code's own Ctrl+O / file picker instead. Call off the
-     *  main thread — this does blocking I/O. */
-    fun importSharedFile(uri: android.net.Uri, resolver: android.content.ContentResolver): File? {
+    /** Makes a file shared from another app (Share/Open with →
+     *  VSCodeTermux) openable inside the guest, returning its absolute
+     *  guest-side path. If it's actually backed by shared storage (a real
+     *  file manager sharing something from /storage/emulated/0, or a
+     *  MediaStore item) that's already reachable through the /sdcard
+     *  bind-mount (see RootfsManager) — returns its real path directly, no
+     *  copy, nothing written to disk at all. Most third-party apps' own
+     *  private content genuinely has no real path to point at (that's the
+     *  actual point of scoped storage isolating one app's files from
+     *  another); only that case falls back to an actual copy, under
+     *  $HOME/.local/share/vscodetermux/shared/ — deliberately not
+     *  $HOME/workspace, which should only ever contain what's actually in
+     *  the project. Call off the main thread — this does blocking I/O. */
+    fun importSharedFile(uri: android.net.Uri, resolver: android.content.ContentResolver): String? {
+        resolveSharedStoragePath(uri, resolver)?.let { relativePath ->
+            if (File(sharedStorageDir, relativePath).exists()) {
+                return "/sdcard/$relativePath"
+            }
+        }
+
         val sharedDir = File(homeDir, ".local/share/vscodetermux/shared").apply { mkdirs() }
         val name = resolveDisplayName(uri, resolver)
             ?: uri.lastPathSegment
             ?: "shared-${System.currentTimeMillis()}"
         val dest = uniqueFile(sharedDir, name)
 
-        // Best-effort: if this URI is actually backed by shared storage (a
-        // real file manager sharing something from /storage/emulated/0, or
-        // a MediaStore item), symlink to it instead of copying —
-        // sharedStorageDir is already bind-mounted into the guest as
-        // /sdcard (see RootfsManager), so this doesn't duplicate any
-        // bytes, and editing it in VS Code edits the original file
-        // directly. Most third-party apps' own private content genuinely
-        // has no real path to point at (that's the actual point of scoped
-        // storage isolating one app's files from another) — those fall
-        // through to a real copy below instead.
-        resolveSharedStoragePath(uri, resolver)?.let { relativePath ->
-            val realFile = File(sharedStorageDir, relativePath)
-            if (realFile.exists()) {
-                return try {
-                    java.nio.file.Files.createSymbolicLink(
-                        dest.toPath(), File("/sdcard/$relativePath").toPath()
-                    )
-                    dest
-                } catch (e: java.io.IOException) {
-                    android.util.Log.w("VSCodeTermux", "symlink failed for $uri, falling back to copy: ${e.message}")
-                    copySharedFile(uri, resolver, dest)
-                }
-            }
-        }
-
         return copySharedFile(uri, resolver, dest)
+            ?.let { "${RootfsManager.TERMUX_HOME}/${it.relativeTo(homeDir).path}" }
     }
 
     private fun copySharedFile(uri: android.net.Uri, resolver: android.content.ContentResolver, dest: File): File? {

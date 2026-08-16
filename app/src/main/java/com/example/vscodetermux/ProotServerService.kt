@@ -43,16 +43,22 @@ class ProotServerService : Service(), TerminalSessionClient by StubTerminalSessi
 
     private var setupSessionId: Int = -1
 
-    private fun spawnSession(): Pair<Int, TerminalSession> {
-        val cmd = manager.interactiveShellCommand()
-        val session = TerminalSession(
+    /** The TerminalSession constructor call itself is identical everywhere
+     *  it's used here — only cmd/env actually vary between the plain
+     *  shell, setup+server, and devtools-install sessions below. */
+    private fun buildTerminalSession(cmd: List<String>, env: Array<String>): TerminalSession =
+        TerminalSession(
             cmd[0],
             filesDir.absolutePath,
             cmd.drop(1).toTypedArray(),
-            manager.interactiveShellEnv(),
+            env,
             2000,
             this
         )
+
+    private fun spawnSession(): Pair<Int, TerminalSession> {
+        val cmd = manager.interactiveShellCommand()
+        val session = buildTerminalSession(cmd, manager.interactiveShellEnv())
         val id = nextSessionId++
         terminalSessions[id] = session
         activeSessionId = id
@@ -81,14 +87,7 @@ class ProotServerService : Service(), TerminalSessionClient by StubTerminalSessi
         Log.i(TAG, "getOrCreateSetupSession: creating a fresh session")
         val cmd = manager.setupAndServerCommand()
         Log.i(TAG, "getOrCreateSetupSession: cmd=${cmd.joinToString(" | ")}")
-        val session = TerminalSession(
-            cmd[0],
-            filesDir.absolutePath,
-            cmd.drop(1).toTypedArray(),
-            manager.setupAndServerEnv(port),
-            2000,
-            this
-        )
+        val session = buildTerminalSession(cmd, manager.setupAndServerEnv(port))
         session.mSessionName = "Setup"
         val id = nextSessionId++
         terminalSessions[id] = session
@@ -121,14 +120,7 @@ class ProotServerService : Service(), TerminalSessionClient by StubTerminalSessi
     fun getOrCreateDevtoolsSession(): Pair<Int, TerminalSession> {
         terminalSessions[devtoolsSessionId]?.let { return Pair(devtoolsSessionId, it) }
         val cmd = manager.devtoolsSetupCommand()
-        val session = TerminalSession(
-            cmd[0],
-            filesDir.absolutePath,
-            cmd.drop(1).toTypedArray(),
-            manager.interactiveShellEnv(),
-            2000,
-            this
-        )
+        val session = buildTerminalSession(cmd, manager.interactiveShellEnv())
         session.mSessionName = "Android devtools install"
         val id = nextSessionId++
         terminalSessions[id] = session

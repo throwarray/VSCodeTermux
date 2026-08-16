@@ -23,7 +23,8 @@ class WebViewActivity : AppCompatActivity() {
             return
         }
 
-        // WIP
+        var deferFragmentSetup = false
+
         when (intent?.action) {
             Intent.ACTION_SEND -> {
                 if (intent.type == "text/plain" && intent.hasExtra(Intent.EXTRA_TEXT)) {
@@ -37,22 +38,61 @@ class WebViewActivity : AppCompatActivity() {
                     }
                 } else {
                     intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)?.let { uri ->
-                        importSharedUris(listOf(uri))
+                        deferFragmentSetup = true
+                        importAndOpen(listOf(uri))
                     }
                 }
             }
             Intent.ACTION_SEND_MULTIPLE -> {
                 intent.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM)?.let { uris ->
-                    importSharedUris(uris)
+                    deferFragmentSetup = true
+                    importAndOpen(uris)
+                }
+            }
+            Intent.ACTION_VIEW -> {
+                intent.data?.let { uri ->
+                    deferFragmentSetup = true
+                    importAndOpen(listOf(uri))
                 }
             }
         }
 
-        
+        if (!deferFragmentSetup) setupWebViewFragment(null)
+    }
+
+    /**
+     * Imports each shared file (see VscodeTermuxApp.importSharedFile — off
+     * the main thread, this does blocking I/O), then opens code-server
+     * with all of them as tabs via VS Code Web's own documented `payload`
+     * query parameter. That parameter is only read once at initial page
+     * load — not a live-session API — which is exactly what this is: a
+     * brand new WebViewFragment/WebView every time, never reusing an
+     * already-loaded one, so there's no "already loaded, can't renavigate"
+     * problem to work around here.
+     */
+    private fun importAndOpen(uris: List<Uri>) {
+        val resolver = contentResolver
+        Thread {
+            val imported = uris.mapNotNull { VscodeTermuxApp.instance.importSharedFile(it, resolver) }
+            runOnUiThread {
+                val url = imported.takeIf { it.isNotEmpty() }
+                    ?.let { VscodeTermuxApp.instance.codeServerOpenFileUrl(it) }
+                setupWebViewFragment(url)
+            }
+        }.start()
+        }
+
+    /** contentResolver access needs the Activity, so this stays here rather
+     *  than in VscodeTermuxApp — the actual copy logic does live there. */
+    private fun setupWebViewFragment(initialUrl: String?) {
         // If retained fragment is found, attach it to the container via replace()
         var fragment = supportFragmentManager.findFragmentByTag(fragmentTag) as? WebViewFragment
         if (fragment == null) {
-            fragment = WebViewFragment()
+            fragment = WebViewFragment().apply {
+                if (initialUrl != null) {
+                    arguments = Bundle().apply { putString(ARG_INITIAL_URL, initialUrl) }
+                }
+            }
         }
         supportFragmentManager.beginTransaction()
             .replace(R.id.webViewContainer, fragment, fragmentTag)
@@ -67,8 +107,8 @@ class WebViewActivity : AppCompatActivity() {
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                val fragment = supportFragmentManager.findFragmentByTag(fragmentTag) as? WebViewFragment
-                val webView = fragment?.takeIf { it.isWebViewReady }?.webView
+                val f = supportFragmentManager.findFragmentByTag(fragmentTag) as? WebViewFragment
+                val webView = f?.takeIf { it.isWebViewReady }?.webView
 
                 if (webView?.canGoBack() == true) {
                     webView.goBack()
@@ -79,12 +119,7 @@ class WebViewActivity : AppCompatActivity() {
         })
     }
 
-    /** contentResolver access needs the Activity, so this stays here rather
-     *  than in VscodeTermuxApp — the actual copy logic does live there. */
-    private fun importSharedUris(uris: List<Uri>) {
-        val resolver = contentResolver
-        Thread {
-            uris.forEach { VscodeTermuxApp.instance.importSharedFile(it, resolver) }
-        }.start()
+    companion object {
+        const val ARG_INITIAL_URL = "initial_url"
     }
 }

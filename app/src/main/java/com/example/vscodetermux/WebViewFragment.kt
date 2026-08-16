@@ -115,7 +115,8 @@ class WebViewFragment : Fragment() {
     private fun loadCurrentPortIfChanged() {
         val currentPort = VscodeTermuxApp.instance.codeServerPort()
         if (loadedPort == currentPort) return
-        if (loadedPort != -1) {
+        val isFirstLoad = loadedPort == -1
+        if (!isFirstLoad) {
             // Clean up the old port's leftover per-origin storage
             // (localStorage/IndexedDB/etc.) — otherwise every port change
             // just leaves another orphaned origin's data sitting around
@@ -123,7 +124,8 @@ class WebViewFragment : Fragment() {
             android.webkit.WebStorage.getInstance().deleteOrigin("https://127.0.0.1:$loadedPort")
         }
         loadedPort = currentPort
-        webView.loadUrl(VscodeTermuxApp.instance.codeServerUrl())
+        val initialUrl = arguments?.getString(WebViewActivity.ARG_INITIAL_URL)
+        webView.loadUrl(if (isFirstLoad && initialUrl != null) initialUrl else VscodeTermuxApp.instance.codeServerUrl())
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
