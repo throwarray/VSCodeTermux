@@ -2,6 +2,7 @@
 <resources>
     <string name="app_name">VSCodeTermux</string>
     <string name="share_open_folder">VSCodeTermux (Open Folder)</string>
+    <string name="share_open_in_browser">VSCodeTermux (Open in Browser)</string>
     <string name="status_idle">Grant permissions to begin setup.</string>
     <string name="grant_permissions">Grant storage permission</string>
     <string name="open_ide">Open VS Code</string>

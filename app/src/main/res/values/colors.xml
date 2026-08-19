@@ -1,4 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ic_launcher_background">#1E1E1E</color>
+
+    <!-- BrowserActivity — matches the editor's own dark theme rather than
+         WebView/system default black-and-white. -->
+    <color name="browser_background">#000000</color>
+    <color name="browser_toolbar">#252526</color>
+    <color name="browser_text">#CCCCCC</color>
+    <color name="browser_hint">#6E6E6E</color>
+    <color name="browser_accent">#007ACC</color>
+    <color name="browser_icon_disabled">#4A4A4A</color>
 </resources>
